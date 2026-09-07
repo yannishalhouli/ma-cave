@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ma Cave à Vin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" class="app-layout">
+    <!-- Navigation Latérale Desktop -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-symbol">🍷</span>
+        <div class="brand-text">
+          <h1>MA CAVE</h1>
+          <span class="brand-subtitle">Gestion Personnelle</span>
+        </div>
+      </div>
+      <nav class="desktop-nav">
+        <button class="nav-link active" data-view="dashboard">
+          <span class="nav-icon">📊</span><span>Accueil</span>
+        </button>
+        <button class="nav-link" data-view="cave">
+          <span class="nav-icon">🍾</span><span>Ma Cave</span>
+        </button>
+        <button class="nav-link" data-view="boire">
+          <span class="nav-icon">⏱️</span><span>À boire</span>
+        </button>
+        <button class="nav-link" data-view="analyse">
+          <span class="nav-icon">📈</span><span>Analyse</span>
+        </button>
+        <button class="nav-link" data-view="ajouter">
+          <span class="nav-icon">➕</span><span>Ajouter un vin</span>
+        </button>
+        <button class="nav-link" data-view="parametres">
+          <span class="nav-icon">⚙️</span><span>Paramètres</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <span id="demo-indicator" class="badge-demo hidden">Données de démo</span>
+      </div>
+    </aside>
+
+    <!-- Zone de contenu -->
+    <main class="main-content">
+      <header class="mobile-header">
+        <div class="brand-mobile">
+          <span class="brand-symbol">🍷</span>
+          <h2>MA CAVE</h2>
+        </div>
+        <span id="demo-indicator-mobile" class="badge-demo hidden">Démo</span>
+      </header>
+
+      <!-- VUE : ACCUEIL -->
+      <section id="view-dashboard" class="view-section active">
+        <div class="view-header">
+          <h2>Vue d'ensemble</h2>
+          <p class="subtitle">État actuel de votre cave au <span class="current-year-text"></span></p>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-label">Bouteilles en stock</span>
+            <span class="kpi-value" id="dash-total-bottles">0</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Références</span>
+            <span class="kpi-value" id="dash-total-refs">0</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Domaines</span>
+            <span class="kpi-value" id="dash-total-domains">0</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-label">Valeur estimée</span>
+            <span class="kpi-value" id="dash-total-value">0 €</span>
+          </div>
+        </div>
+
+        <div class="dashboard-sections">
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Priorités de dégustation</h3>
+              <button class="btn-link" data-view="boire">Tout afficher</button>
+            </div>
+            <div id="dash-priorities-list" class="wine-card-mini-grid"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Derniers ajouts</h3>
+              <button class="btn-link" data-view="cave">Toute la cave</button>
+            </div>
+            <div id="dash-recent-list" class="wine-card-mini-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VUE : MA CAVE -->
+      <section id="view-cave" class="view-section">
+        <div class="view-header flex-between">
+          <div>
+            <h2>Ma Cave</h2>
+            <p class="subtitle"><span id="cave-count-text">0 référence</span></p>
+          </div>
+          <button class="btn btn-primary" data-view="ajouter">+ Ajouter un vin</button>
+        </div>
+
+        <div class="filter-toolbar">
+          <div class="search-box">
+            <input type="text" id="filter-search" placeholder="Rechercher par nom, domaine, cépage, appellation...">
+          </div>
+          <div class="filters-row">
+            <select id="filter-color">
+              <option value="">Toutes les couleurs</option>
+              <option value="Rouge">Rouge</option>
+              <option value="Blanc">Blanc</option>
+              <option value="Rosé">Rosé</option>
+              <option value="Effervescent">Effervescent</option>
+              <option value="Liquoreux">Liquoreux</option>
+              <option value="Orange">Orange</option>
+            </select>
+            <select id="filter-region">
+              <option value="">Toutes les régions</option>
+            </select>
+            <select id="filter-status">
+              <option value="">Tous les statuts</option>
+              <option value="Trop jeune">Trop jeune</option>
+              <option value="En garde">En garde</option>
+              <option value="Optimal">Optimal</option>
+              <option value="À boire">À boire</option>
+              <option value="À surveiller">À surveiller</option>
+            </select>
+            <select id="filter-sort">
+              <option value="nom-asc">Nom (A → Z)</option>
+              <option value="domaine-asc">Domaine (A → Z)</option>
+              <option value="millesime-desc">Millésime (Récent → Ancien)</option>
+              <option value="millesime-asc">Millésime (Ancien → Récent)</option>
+              <option value="quantite-desc">Quantité (Décroissante)</option>
+              <option value="prix-desc">Prix (Décroissant)</option>
+            </select>
+            <button id="filter-fav-btn" class="btn btn-toggle" type="button">★ Favoris</button>
+          </div>
+        </div>
+
+        <div id="cave-list" class="wine-grid"></div>
+      </section>
+
+      <!-- VUE : À BOIRE -->
+      <section id="view-boire" class="view-section">
+        <div class="view-header">
+          <h2>À boire & Maturité</h2>
+          <p class="subtitle">Sélection basée sur vos estimations manuelles de garde</p>
+        </div>
+
+        <div class="drink-section">
+          <div class="drink-section-header status-a-boire">
+            <h3>À boire maintenant</h3>
+            <span class="count-badge" id="count-a-boire">0</span>
+          </div>
+          <div id="list-a-boire" class="wine-grid"></div>
+        </div>
+
+        <div class="drink-section">
+          <div class="drink-section-header status-optimal">
+            <h3>Fenêtre optimale</h3>
+            <span class="count-badge" id="count-optimal">0</span>
+          </div>
+          <div id="list-optimal" class="wine-grid"></div>
+        </div>
+
+        <div class="drink-section">
+          <div class="drink-section-header status-a-surveiller">
+            <h3>À surveiller (fin de garde dépassée)</h3>
+            <span class="count-badge" id="count-a-surveiller">0</span>
+          </div>
+          <div id="list-a-surveiller" class="wine-grid"></div>
+        </div>
+
+        <div class="drink-section">
+          <div class="drink-section-header status-trop-jeune">
+            <h3>Trop jeunes</h3>
+            <span class="count-badge" id="count-trop-jeune">0</span>
+          </div>
+          <div id="list-trop-jeune" class="wine-grid"></div>
+        </div>
+      </section>
+
+      <!-- VUE : FICHE DÉTAILLÉE -->
+      <section id="view-vin" class="view-section">
+        <div class="view-header flex-between">
+          <button class="btn btn-secondary" id="btn-back-cave">← Retour à la liste</button>
+          <div class="wine-actions-header">
+            <button id="wine-detail-fav-btn" class="btn btn-icon">☆</button>
+            <button id="wine-detail-edit-btn" class="btn btn-secondary">Modifier</button>
+            <button id="wine-detail-delete-btn" class="btn btn-danger">Supprimer</button>
+          </div>
+        </div>
+
+        <div class="wine-sheet">
+          <div class="wine-sheet-hero">
+            <div>
+              <div class="badge-group" id="wine-detail-badges"></div>
+              <h2 id="wine-detail-nom">Nom du Vin</h2>
+              <h3 id="wine-detail-domaine" class="wine-detail-domaine">Domaine</h3>
+              <p id="wine-detail-appellation-line" class="wine-detail-sub"></p>
+            </div>
+            <div class="stock-box">
+              <span class="stock-label">Stock actuel</span>
+              <div class="stock-counter-large">
+                <button id="btn-stock-minus" class="btn-round">-</button>
+                <span id="wine-detail-qty" class="stock-num">0</span>
+                <button id="btn-stock-plus" class="btn-round">+</button>
+              </div>
+              <button id="btn-consume-bottle" class="btn btn-consume">Consommer une bouteille</button>
+            </div>
+          </div>
+
+          <div class="sheet-grid">
+            <div class="sheet-card">
+              <h4>Identification & Cépages</h4>
+              <dl class="meta-list">
+                <div><dt>Couleur</dt><dd id="wine-detail-couleur">-</dd></div>
+                <div><dt>Millésime</dt><dd id="wine-detail-millesime">-</dd></div>
+                <div><dt>Région / Pays</dt><dd id="wine-detail-region-pays">-</dd></div>
+                <div><dt>Cépages</dt><dd id="wine-detail-cepages">-</dd></div>
+                <div><dt>Classification</dt><dd id="wine-detail-classification">-</dd></div>
+                <div><dt>Contenance</dt><dd id="wine-detail-contenance">-</dd></div>
+              </dl>
+            </div>
+
+            <div class="sheet-card">
+              <h4>Emplacement & Valeur</h4>
+              <dl class="meta-list">
+                <div><dt>Emplacement</dt><dd id="wine-detail-emplacement">-</dd></div>
+                <div><dt>Prix unitaire</dt><dd id="wine-detail-prix">-</dd></div>
+                <div><dt>Valeur totale</dt><dd id="wine-detail-valeur-totale">-</dd></div>
+                <div><dt>Date d'achat</dt><dd id="wine-detail-date-achat">-</dd></div>
+                <div><dt>Vendeur</dt><dd id="wine-detail-vendeur">-</dd></div>
+              </dl>
+            </div>
+          </div>
+
+          <div class="sheet-card">
+            <h4>Fenêtre de Garde Personnelle</h4>
+            <div id="garde-timeline-container" class="garde-timeline-wrapper"></div>
+          </div>
+
+          <div class="sheet-card">
+            <div class="flex-between mb-2">
+              <h4>Dégustations (<span id="wine-degustations-count">0</span>)</h4>
+              <button id="btn-add-degustation" class="btn btn-secondary btn-sm">+ Noter / Commenter</button>
+            </div>
+            <div id="form-degustation-inline" class="form-subbox hidden">
+              <h5>Nouvelle dégustation</h5>
+              <div class="form-row-3">
+                <div class="field">
+                  <label for="deg-note">Note (/10)</label>
+                  <input type="number" id="deg-note" min="0" max="10" step="0.5" placeholder="8.5">
+                </div>
+                <div class="field">
+                  <label for="deg-date">Date</label>
+                  <input type="date" id="deg-date">
+                </div>
+                <div class="field">
+                  <label for="deg-accords">Accords mets-vins</label>
+                  <input type="text" id="deg-accords" placeholder="Magret, fromages...">
+                </div>
+              </div>
+              <div class="field mt-1">
+                <label for="deg-commentaire">Commentaire</label>
+                <textarea id="deg-commentaire" rows="2" placeholder="Arômes, équilibre, tanins..."></textarea>
+              </div>
+              <div class="flex-end gap-1 mt-1">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-degustation">Annuler</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-save-degustation">Enregistrer</button>
+              </div>
+            </div>
+            <div id="wine-degustations-list" class="notes-timeline"></div>
+          </div>
+
+          <div class="sheet-card">
+            <h4>Historique des mouvements</h4>
+            <ul id="wine-history-list" class="history-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- VUE : AJOUTER / MODIFIER -->
+      <section id="view-ajouter" class="view-section">
+        <div class="view-header">
+          <h2 id="form-title">Ajouter une référence</h2>
+          <p class="subtitle">Renseignez les caractéristiques de votre vin</p>
+        </div>
+
+        <form id="wine-form" class="wine-form-container" novalidate>
+          <input type="hidden" id="form-wine-id" value="">
+
+          <fieldset class="form-fieldset">
+            <legend>Étape 1 — Identification</legend>
+            <div class="form-grid">
+              <div class="field span-2">
+                <label for="form-nom">Nom de la cuvée / vin *</label>
+                <input type="text" id="form-nom" required placeholder="ex. Château Haut-Batailley">
+              </div>
+              <div class="field span-2">
+                <label for="form-domaine">Domaine / Producteur *</label>
+                <input type="text" id="form-domaine" required placeholder="ex. Château Haut-Batailley">
+              </div>
+              <div class="field">
+                <label for="form-appellation">Appellation *</label>
+                <input type="text" id="form-appellation" required placeholder="ex. Pauillac">
+              </div>
+              <div class="field">
+                <label for="form-region">Région *</label>
+                <input type="text" id="form-region" required placeholder="ex. Bordeaux">
+              </div>
+              <div class="field">
+                <label for="form-pays">Pays</label>
+                <input type="text" id="form-pays" value="France">
+              </div>
+              <div class="field">
+                <label for="form-couleur">Couleur *</label>
+                <select id="form-couleur" required>
+                  <option value="Rouge">Rouge</option>
+                  <option value="Blanc">Blanc</option>
+                  <option value="Rosé">Rosé</option>
+                  <option value="Effervescent">Effervescent</option>
+                  <option value="Liquoreux">Liquoreux</option>
+                  <option value="Orange">Orange</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="form-millesime">Millésime *</label>
+                <input type="number" id="form-millesime" required min="1900" max="2100" placeholder="ex. 2019">
+              </div>
+              <div class="field">
+                <label for="form-contenance">Contenance (cl) *</label>
+                <input type="number" id="form-contenance" required value="75">
+              </div>
+              <div class="field span-2">
+                <label for="form-cepages">Cépages</label>
+                <input type="text" id="form-cepages" placeholder="ex. Cabernet Sauvignon, Merlot">
+              </div>
+              <div class="field span-2">
+                <label for="form-classification">Classification</label>
+                <input type="text" id="form-classification" placeholder="ex. 5e Grand Cru Classé, Premier Cru...">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="form-fieldset">
+            <legend>Étape 2 — Stock & Achat</legend>
+            <div class="form-grid">
+              <div class="field">
+                <label for="form-quantite">Quantité de bouteilles *</label>
+                <input type="number" id="form-quantite" required min="0" value="1">
+              </div>
+              <div class="field">
+                <label for="form-emplacement">Emplacement</label>
+                <input type="text" id="form-emplacement" placeholder="ex. Cave principale — Casier B3">
+              </div>
+              <div class="field">
+                <label for="form-prix">Prix unitaire (€)</label>
+                <input type="number" id="form-prix" step="0.5" min="0" placeholder="ex. 32">
+              </div>
+              <div class="field">
+                <label for="form-date-achat">Date d'achat</label>
+                <input type="date" id="form-date-achat">
+              </div>
+              <div class="field span-2">
+                <label for="form-vendeur">Vendeur / Caviste</label>
+                <input type="text" id="form-vendeur" placeholder="ex. Caviste indépendant, Propriété...">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="form-fieldset">
+            <legend>Étape 3 — Fenêtre de Garde (manuelle)</legend>
+            <p class="field-hint">Indiquez vos estimations d'années clés.</p>
+            <div class="form-grid-4">
+              <div class="field">
+                <label for="form-garde-debut">Début de garde</label>
+                <input type="number" id="form-garde-debut" min="1900" max="2100" placeholder="ex. 2024">
+              </div>
+              <div class="field">
+                <label for="form-garde-opt-debut">Début optimal</label>
+                <input type="number" id="form-garde-opt-debut" min="1900" max="2100" placeholder="ex. 2028">
+              </div>
+              <div class="field">
+                <label for="form-garde-opt-fin">Fin optimal</label>
+                <input type="number" id="form-garde-opt-fin" min="1900" max="2100" placeholder="ex. 2035">
+              </div>
+              <div class="field">
+                <label for="form-garde-fin">Fin de garde</label>
+                <input type="number" id="form-garde-fin" min="1900" max="2100" placeholder="ex. 2040">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="form-fieldset">
+            <legend>Étape 4 — Première impression (optionnel)</legend>
+            <div class="form-grid">
+              <div class="field">
+                <label for="form-note">Note personnelle (/10)</label>
+                <input type="number" id="form-note" min="0" max="10" step="0.5" placeholder="ex. 8.5">
+              </div>
+              <div class="field">
+                <label for="form-accords">Accords mets-vins</label>
+                <input type="text" id="form-accords" placeholder="ex. Côte de bœuf, canard">
+              </div>
+              <div class="field span-2">
+                <label for="form-commentaire">Commentaire de dégustation</label>
+                <textarea id="form-commentaire" rows="2" placeholder="Potentiel ressenti, tanins..."></textarea>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-submit-row">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-wine-form">Annuler</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-wine">Enregistrer la référence</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- VUE : ANALYSE -->
+      <section id="view-analyse" class="view-section">
+        <div class="view-header">
+          <h2>Analyse de la cave</h2>
+          <p class="subtitle">Répartition de votre collection</p>
+        </div>
+
+        <div class="analysis-grid">
+          <div class="analysis-card">
+            <h4>Répartition par couleur</h4>
+            <div id="stats-couleur-list" class="stat-bars-container"></div>
+          </div>
+          <div class="analysis-card">
+            <h4>Statuts de maturité</h4>
+            <div id="stats-garde-list" class="stat-bars-container"></div>
+          </div>
+          <div class="analysis-card">
+            <h4>Principales régions</h4>
+            <div id="stats-region-list" class="stat-bars-container"></div>
+          </div>
+          <div class="analysis-card">
+            <h4>Répartition par millésime</h4>
+            <div id="stats-millesime-list" class="stat-bars-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VUE : PARAMÈTRES -->
+      <section id="view-parametres" class="view-section">
+        <div class="view-header">
+          <h2>Paramètres & Sauvegardes</h2>
+          <p class="subtitle">Vos données restent 100% locales dans votre navigateur</p>
+        </div>
+
+        <div class="settings-stack">
+          <div class="settings-card">
+            <div class="settings-info">
+              <h4>Exporter ma cave</h4>
+              <p>Téléchargez une sauvegarde intégrale au format standard JSON.</p>
+            </div>
+            <button id="btn-export-json" class="btn btn-primary">Télécharger l'export JSON</button>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-info">
+              <h4>Importer une sauvegarde</h4>
+              <p>Restaurez vos données depuis un fichier JSON. <strong class="text-danger">Attention : les données actuelles seront remplacées.</strong></p>
+            </div>
+            <div>
+              <input type="file" id="input-import-json" accept=".json" class="hidden-input">
+              <button id="btn-trigger-import" class="btn btn-secondary">Sélectionner un fichier JSON</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-info">
+              <h4>Données de démonstration</h4>
+              <p>Réinitialiser ou purger les vins de test livrés avec l'application.</p>
+            </div>
+            <div class="button-group">
+              <button id="btn-reset-demo" class="btn btn-secondary">Recharger la démo</button>
+              <button id="btn-purge-demo" class="btn btn-danger">Supprimer la démo</button>
+            </div>
+          </div>
+
+          <div class="settings-card danger-zone">
+            <div class="settings-info">
+              <h4>Vider entièrement la cave</h4>
+              <p>Supprime définitivement toutes les données sur cet appareil.</p>
+            </div>
+            <button id="btn-clear-all" class="btn btn-danger-outline">Tout effacer</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Navigation Smartphone -->
+    <nav class="mobile-nav">
+      <button class="mobile-nav-link active" data-view="dashboard">
+        <span class="nav-icon">📊</span><span class="nav-label">Accueil</span>
+      </button>
+      <button class="mobile-nav-link" data-view="cave">
+        <span class="nav-icon">🍾</span><span class="nav-label">Cave</span>
+      </button>
+      <button class="mobile-nav-link" data-view="boire">
+        <span class="nav-icon">⏱️</span><span class="nav-label">À boire</span>
+      </button>
+      <button class="mobile-nav-link" data-view="analyse">
+        <span class="nav-icon">📈</span><span class="nav-label">Analyse</span>
+      </button>
+      <button class="mobile-nav-link" data-view="parametres">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Réglages</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
