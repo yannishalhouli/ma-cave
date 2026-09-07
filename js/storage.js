@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'ma_cave_vins_data';
+const GIST_META_KEY = 'ma_cave_gist_meta';
+const GIST_FILENAME = 'ma_cave_data.json';
 
 const DEMO_WINES = [
   {
@@ -215,32 +217,214 @@ const DEMO_WINES = [
   }
 ];
 
+// --- Client minimal pour GitHub Gists ---
+class GistClient {
+  constructor(token = null, gistId = null) {
+    this.token = token;
+    this.gistId = gistId;
+  }
+
+  setToken(token) {
+    this.token = token;
+  }
+
+  setGistId(gistId) {
+    this.gistId = gistId;
+  }
+
+  async _request(path, method = 'GET', body = null) {
+    const headers = { Accept: 'application/vnd.github+json' };
+    if (this.token) headers.Authorization = `token ${this.token}`;
+    const opts = { method, headers };
+    if (body) {
+      opts.body = JSON.stringify(body);
+      headers['Content-Type'] = 'application/json';
+    }
+    const res = await fetch(`https://api.github.com${path}`, opts);
+    if (!res.ok) {
+      const txt = await res.text();
+      const err = new Error(`Gist API error ${res.status}: ${txt}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  }
+
+  // Lire le contenu du gist (retourne un tableau d'objets vins)
+  async fetchGistData() {
+    if (!this.gistId) throw new Error('gistId not set');
+    const json = await this._request(`/gists/${this.gistId}`, 'GET');
+    const fileObj = (json.files && (json.files[GIST_FILENAME] || Object.values(json.files)[0]));
+    if (!fileObj || !fileObj.content) return null;
+    try {
+      return JSON.parse(fileObj.content);
+    } catch (e) {
+      throw new Error('Erreur parsing JSON du Gist: ' + e.message);
+    }
+  }
+
+  // Créer un gist privé avec le contenu (retourne l'objet gist)
+  async createGist(data, isPublic = false) {
+    if (!this.token) throw new Error('token required to create gist');
+    const body = {
+      public: !!isPublic,
+      files: {
+        [GIST_FILENAME]: {
+          content: JSON.stringify(data, null, 2)
+        }
+      },
+      description: 'ma-cave vins data (automatique)'
+    };
+    const json = await this._request('/gists', 'POST', body);
+    this.gistId = json.id;
+    return json;
+  }
+
+  // Mettre à jour un gist existant
+  async updateGist(data) {
+    if (!this.token) throw new Error('token required to update gist');
+    if (!this.gistId) throw new Error('gistId not set');
+    const body = {
+      files: {
+        [GIST_FILENAME]: {
+          content: JSON.stringify(data, null, 2)
+        }
+      }
+    };
+    const json = await this._request(`/gists/${this.gistId}`, 'PATCH', body);
+    return json;
+  }
+}
+
+// --- Storage avec support Gist + fallback localStorage ---
 const Storage = {
-  loadWines() {
+  gistClient: null,
+
+  // configureGist: appel de votre UI pour fournir token et/ou gistId
+  configureGist({ token = null, gistId = null } = {}) {
+    if (!this.gistClient) this.gistClient = new GistClient(token, gistId);
+    else {
+      if (token) this.gistClient.setToken(token);
+      if (gistId) this.gistClient.setGistId(gistId);
+    }
+    // stocker en meta local pour persistance UI légère (optionnel)
+    localStorage.setItem(GIST_META_KEY, JSON.stringify({ gistId: this.gistClient.gistId || null }));
+  },
+
+  // restore gist meta depuis localStorage (au démarrage de l'app)
+  restoreGistMeta() {
+    try {
+      const raw = localStorage.getItem(GIST_META_KEY);
+      if (!raw) return;
+      const meta = JSON.parse(raw);
+      if (meta && meta.gistId) {
+        if (!this.gistClient) this.gistClient = new GistClient(null, meta.gistId);
+        else this.gistClient.setGistId(meta.gistId);
+      }
+    } catch (e) {
+      // ignore
+    }
+  },
+
+  // Créer gist à partir des données locales (util pour migration)
+  async migrateLocalToGist({ token, isPublic = false } = {}) {
+    // require token
+    if (!token) throw new Error('Token GitHub requis pour créer le Gist');
+    const local = this._loadLocal();
+    this.configureGist({ token, gistId: null });
+    const res = await this.gistClient.createGist(local, isPublic);
+    // sauvegarder la gistId en meta
+    localStorage.setItem(GIST_META_KEY, JSON.stringify({ gistId: res.id }));
+    return res;
+  },
+
+  // Chargement (préférer gist si configuré)
+  async loadWines() {
+    // restore meta if present
+    this.restoreGistMeta();
+
+    // si gistClient est configuré avec token+gistId -> essayer de lire
+    if (this.gistClient && this.gistClient.gistId && this.gistClient.token) {
+      try {
+        const data = await this.gistClient.fetchGistData();
+        if (!data) {
+          // si gist existe mais vide : initialiser demo
+          await this.gistClient.updateGist(DEMO_WINES);
+          return DEMO_WINES;
+        }
+        return data;
+      } catch (e) {
+        console.error('Erreur lecture Gist, fallback localStorage', e);
+        return this._loadLocal();
+      }
+    }
+
+    // si gistId sans token -> essayer lecture publique (non-auth)
+    if (this.gistClient && this.gistClient.gistId && !this.gistClient.token) {
+      try {
+        const data = await this.gistClient.fetchGistData();
+        return data || this._loadLocal();
+      } catch (e) {
+        console.error('Erreur lecture Gist publique, fallback localStorage', e);
+        return this._loadLocal();
+      }
+    }
+
+    // fallback local
+    return this._loadLocal();
+  },
+
+  // Sauvegarde (essaie gist si token présent, sinon localStorage)
+  async saveWines(wines) {
+    // sauvegarde locale immédiate (pour robustesse)
+    this._saveLocal(wines);
+
+    // si gist configuré avec token -> try create or update
+    if (this.gistClient && this.gistClient.token) {
+      try {
+        if (!this.gistClient.gistId) {
+          const res = await this.gistClient.createGist(wines, false);
+          localStorage.setItem(GIST_META_KEY, JSON.stringify({ gistId: res.id }));
+        } else {
+          await this.gistClient.updateGist(wines);
+        }
+        return true;
+      } catch (e) {
+        console.error('Erreur sauvegarde Gist, données restent en local', e);
+        return false;
+      }
+    }
+
+    // no token -> nothing more to do
+    return true;
+  },
+
+  // opérations CRUD reprenant l'API existante :
+  _loadLocal() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      this.saveWines(DEMO_WINES);
+      this._saveLocal(DEMO_WINES);
       return DEMO_WINES;
     }
     try {
       return JSON.parse(raw);
     } catch (e) {
-      console.error("Erreur de parsing", e);
+      console.error("Erreur de parsing localStorage", e);
       return [];
     }
   },
 
-  saveWines(wines) {
+  _saveLocal(wines) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(wines));
   },
 
   getWineById(id) {
-    const wines = this.loadWines();
+    const wines = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
     return wines.find(w => w.id === id) || null;
   },
 
-  addWine(wineData) {
-    const wines = this.loadWines();
+  async addWine(wineData) {
+    const wines = await this.loadWines();
     const newWine = {
       ...wineData,
       id: "wine_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
@@ -249,30 +433,30 @@ const Storage = {
         {
           date: new Date().toISOString().split('T')[0],
           type: "Création",
-          note: `Entrée en cave (+${wineData.stock.quantite})`
+          note: `Entrée en cave (+${wineData.stock?.quantite || 0})`
         }
       ]
     };
     wines.unshift(newWine);
-    this.saveWines(wines);
+    await this.saveWines(wines);
     return newWine;
   },
 
-  updateWine(updatedWine) {
-    const wines = this.loadWines();
+  async updateWine(updatedWine) {
+    const wines = await this.loadWines();
     const index = wines.findIndex(w => w.id === updatedWine.id);
     if (index !== -1) {
       wines[index] = updatedWine;
-      this.saveWines(wines);
+      await this.saveWines(wines);
       return true;
     }
     return false;
   },
 
-  deleteWine(id) {
-    let wines = this.loadWines();
+  async deleteWine(id) {
+    let wines = await this.loadWines();
     wines = wines.filter(w => w.id !== id);
-    this.saveWines(wines);
+    await this.saveWines(wines);
   },
 
   resetDemo() {
@@ -280,17 +464,19 @@ const Storage = {
   },
 
   purgeDemo() {
-    let wines = this.loadWines();
-    wines = wines.filter(w => !w.isDemo);
+    const wines = this._loadLocal().filter(w => !w.isDemo);
     this.saveWines(wines);
   },
 
   clearAll() {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(GIST_META_KEY);
   },
 
   hasDemoWines() {
-    const wines = this.loadWines();
+    const wines = this._loadLocal();
     return wines.some(w => w.isDemo);
   }
 };
+
+export default Storage;
