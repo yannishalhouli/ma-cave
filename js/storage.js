@@ -479,4 +479,6 @@ const Storage = {
   }
 };
 
-export default Storage;
+if (typeof window !== 'undefined') {
+  window.Storage = Storage;
+}
